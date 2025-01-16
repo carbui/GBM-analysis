@@ -39,7 +39,7 @@ sc_dotplot <- scale_colour_continuous(type = "viridis", limits = c(-2,3))
 
 #for pathway analysis
 myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral"))) #make palette
-sc <- scale_colour_gradientn(colours = myPalette(100), limits=c(0, 0.05)) #set the limits for the pvalue colors
+my_color <- scale_colour_gradientn(colours = myPalette(100), limits=c(0, 0.05)) #set the limits for the pvalue colors
 ```
 ##Load libraries CellChat
 ```{r}
@@ -139,7 +139,7 @@ DimPlot(seurat_R1_N, reduction = 'umap', label = TRUE)
 suppressPackageStartupMessages(library(scDblFinder))
 set.seed(123)
 
-#I have to Run scDblFinder for each object separately since my computer didnt have memory enpugh --> alternatively, run it remotely
+#Run scDblFinder for each object separately
 sce_R1_N <- scDblFinder(GetAssayData(seurat_R1_N, layer= "counts"), clusters = Idents(seurat_R1_N))
 sce_R1_T <- scDblFinder(GetAssayData(seurat_R1_T, layer= "counts"), clusters = Idents(seurat_R1_T))
 sce_R2_N <- scDblFinder(GetAssayData(seurat_R2_N, layer= "counts"), clusters = Idents(seurat_R2_N))
@@ -160,7 +160,7 @@ seurat_R4_N$scDblFinder.class <- sce_R4_N$scDblFinder.class
 seurat_R4_T$scDblFinder.class <- sce_R4_T$scDblFinder.class
 
 ```
-##Visualize the doublets
+##Visualize the doublets, subset to obtain only singlets, save
 ```{r}
 # Path to save the processed objects
 output_dir <- "~/Desktop/GBM_seurat/Xie/scDoubletFinder/"
@@ -169,19 +169,14 @@ output_dir <- "~/Desktop/GBM_seurat/Xie/scDoubletFinder/"
 for (name in seurat_names) {
   # Get the Seurat object
   seurat_obj <- get(name)
-  
   # Visualize the doublets
   DimPlot(seurat_obj, reduction = "umap", split.by = "scDblFinder.class")
-  
   # Set the identity class as "doublet" or "singlet"
   Idents(seurat_obj) <- seurat_obj@meta.data$scDblFinder.class
-  
   # Subset to include only singlets
   seurat_obj <- subset(seurat_obj, idents = "singlet")
-  
   # Save the processed Seurat object
   saveRDS(seurat_obj, file = file.path(output_dir, paste0(name, "_singlets.rds")))
-  
   # Assign back to the global environment if needed
   assign(name, seurat_obj)
 }
@@ -428,7 +423,7 @@ merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = "sample", int
 table(merged_seurat@meta.data$region)
 ```
 
-## Filtering
+## Filtering with stricter parameters
 ```{r}
 selected_f <- rownames(merged_seurat)[Matrix::rowSums(merged_seurat) > 3]
 merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
@@ -650,21 +645,16 @@ selected_cells_2 <-FindVariableFeatures(selected_cells_2)
 selected_cells_2 <- ScaleData(selected_cells_2)
 selected_cells_2 <- RunPCA(selected_cells_2)
 selected_cells_2 <- FindNeighbors(selected_cells_2, dims = 1:30, k.param = 60, prune.SNN = 1/15)
-
+selected_cells_2 <- RunUMAP(selected_cells_2, dims = 1:15, min.dist = 0.3, spread = 0.3)
 # Clustering with louvain 
 for (res in c(0.4)) {
     selected_cells_2 <- FindClusters(selected_cells_2, resolution = res, algorithm = 1)
 }
-#plot
+
+#plots
 DimPlot(selected_cells_2, reduction = "umap", shuffle= TRUE, seed = TRUE, pt.size = 0.3, repel = TRUE, label = TRUE, label.size = 2.4, group.by = "integrated_snn_res.0.4")
 
-
-selected_cells_2 <- RunUMAP(selected_cells_2, dims = 1:15, min.dist = 0.3, spread = 0.3)
-
-
-#various plots
 plot_grid(ncol = 3, DimPlot(selected_cells_2,label = T, reduction = "umap", group.by = "integrated_snn_res.0.5",shuffle = T, seed = TRUE, pt.size = 0.8, repel = TRUE) + NoAxes(), DimPlot(selected_cells_2, reduction = "umap", group.by = "patient",shuffle = T, seed = TRUE, pt.size = 0.8, repel = TRUE) + NoAxes(), DimPlot(selected_cells_2, reduction = "umap", group.by = "region",shuffle = T, seed = TRUE, pt.size = 0.8, repel = TRUE) + NoAxes())
-
 
 saveRDS(selected_cells_2, "/Volumes/Elements/CB/Xie/august/selected_cells_2_20241101.rds")
 ```
@@ -677,10 +667,6 @@ table_patients <- table(selected_cells_2@meta.data$patient, selected_cells_2@met
 table_patients
 #barplot(table_patients,horiz = TRUE, col= c("coral1", "#A2CD5A", "#7AC5CD", "#AB82FF"), legend.text = c("patient_1", "patient_2", "patient_3", "patient_4"))
 
-table_boh <- table(selected_cells_2@meta.data$region, selected_cells_2@meta.data$patient)
-table_boh
-#barplot(table_boh,horiz = TRUE, col= c("coral1", "#7AC5CD"),)
-
 table <- as.data.frame(table)
 table %>% 
   group_by(Var1, Var2)%>%
@@ -691,11 +677,6 @@ table_patients %>%
   group_by(Var1, Var2)%>%
   ggplot() + geom_col(aes(x = Freq, y = Var2, fill = Var1), position = "fill")
 table_patients
-table_boh <- as.data.frame(table_boh)
-table_boh %>% 
-  group_by(Var1, Var2)%>%
-  ggplot() + geom_col(aes(x = Freq, y = Var2, fill = Var1), position = "fill")
-table_boh
 ```
 ## Dotplot PC markers
 ```{r}
@@ -713,18 +694,8 @@ VlnPlot(selected_cells, features = m, assay = "RNA", pt.size = 0)
 features = c("RGS5", "PDGFRB", "ATP13A5", "CSPG4", "ANPEP", "ACTA2", "DES", "PDGFRA", "VIM")
 VlnPlot(selected_cells_2, features = pc_types, pt.size = 0.2)
 selected_cells_2 <- SetIdent(selected_cells_2, value = "integrated_snn_res.0.4")
-
-
 ```
 
-## Plots based on PC zonation Betzholz paper
-```{r}
-venous_pc   <-c("FAM13A", "NDUFA4L2", "TNS2", "BMPR1A", "STXBP4", "JAG1", "ARHGEF12", "ZSWIM5", "TRAK1", "FILIP1L", "PLA2R1", "FERMT2", "MICU3", "ELOVL5", "OPA3", "ABCA8", "RGL1", "TTLL7", "ROCK2", "MEF2D", "GNPTAB", "BGN", "SYNM", "MEF2C", "PPFIA2")
-arterial_pc <-c("AGAP1", "CTNNB1", "PPFIBP1", "EGR1", "COBLL1", "CYR61", "PDE8A", "INSR", "ARHGEF7", "MEF2C", "KTN1", "QKI", "JUN", "SORT1", "ZEB1", "RAPH1", "NR3C1", "HSPD1", "EPAS1", "KLHL5", "LEF1", "FLT1", "TNS1", "LARGE1", "PHLPP1")
-vSMA <-c("CTNNB1", "HSPH1", "MEF2C", "DOCK4", "SPARCL1", "FOXN3", "APOLD1", "HSPA1B", "SPP1", "HNRNPH1", "PABPC1", "ROCK1", "FKBP5", "TSC22D1", "ITIH5", "CLDN5", "SLC2A1", "NET1", "EPS8", "MTSS1", "SSH2", "PTEN", "DSTN", "KIF5B", "SEPT7")
-Dotplot(selected_cells_2, features = venous_pc, assay = "RNA") + RotatedAxis() 
-DotPlot(selected_cells_2, features = vSMA, assay = "RNA") + RotatedAxis() 
-```
 ## Plots pericytes modules Ruiz-Moreno et al. & Oudenardeen et al.
 ```{r} 
 immune_act <- c("HLA-DPA1", "C1QC", "CCL4", "HLA-DRB5", "AIF1", "FCER1G", "CD69", "CXCL3") 
@@ -740,12 +711,12 @@ pv_fib <- c("DCN", "C1S", "CYP1B", "COLEC12", "LAMA2", "APOD", "C7", "PLK2", "EL
 
 VlnPlot(selected_cells_2, features = immune_act, assay = "RNA")
 
-pc_markers_clara  <- c("Nodal", "Kcnj8", "Ggt1", "Abcc9", "Plxdc1", "Slc16a12", "Slc6a20a", "Higd1b", "Egflam", "Arhgap42", "Lin7a", "S1pr3", "Ecm2", "Gpc3", "Pth1r", "Nr1h3", "Ndufa4l2", "Pdgfrb", "Cox4i2", "Ggt5", "Gper1", "Tmem45a", "Enpep", "Ifitm1", "Cd248", "Cthrc1", "Itga4", "Lamc1", "Ace2", "Mir143hg", "Eva1b", "Mylip", "Rgs5", "Myo1b", "Colec12",  "Tfpi", "Heyl", "Odf3l1", "Cald1", "Slc38a11","Gjc1", "Kcne4", "Plce1", "Lama2", "Vasn", "Lhfp", "Ednra", "Nid1", "Gja4", "F2r", "Sept11", "Sik1", "Notch3", "Pten", "Eps8", "Aspn", "Phldb2", "Cyth3", "Lamc3", "Mrc2","Tenc1", "Pear1")
-pc_markers_clara   <- lapply(pc_markers_clara , toupper)
-pc_markers_clara  <- as.character(pc_markers_clara)
+pc_markers_oudenardeen  <- c("Nodal", "Kcnj8", "Ggt1", "Abcc9", "Plxdc1", "Slc16a12", "Slc6a20a", "Higd1b", "Egflam", "Arhgap42", "Lin7a", "S1pr3", "Ecm2", "Gpc3", "Pth1r", "Nr1h3", "Ndufa4l2", "Pdgfrb", "Cox4i2", "Ggt5", "Gper1", "Tmem45a", "Enpep", "Ifitm1", "Cd248", "Cthrc1", "Itga4", "Lamc1", "Ace2", "Mir143hg", "Eva1b", "Mylip", "Rgs5", "Myo1b", "Colec12",  "Tfpi", "Heyl", "Odf3l1", "Cald1", "Slc38a11","Gjc1", "Kcne4", "Plce1", "Lama2", "Vasn", "Lhfp", "Ednra", "Nid1", "Gja4", "F2r", "Sept11", "Sik1", "Notch3", "Pten", "Eps8", "Aspn", "Phldb2", "Cyth3", "Lamc3", "Mrc2","Tenc1", "Pear1")
+pc_markers_oudenardeen   <- lapply(pc_markers_oudenardeen , toupper)
+pc_markers_oudenardeen  <- as.character(pc_markers_oudenardeen)
 
-DotPlot(seurat.int, features = pc_markers_clara, assay = "RNA") + RotatedAxis() + sc_dotplot
-DotPlot(merged_seurat_filtered, features = pc_markers_clara) + RotatedAxis() + sc_dotplot
+DotPlot(seurat.int, features = pc_markers_oudenardeen, assay = "RNA") + RotatedAxis() + sc_dotplot
+DotPlot(merged_seurat_filtered, features = pc_markers_oudenardeen) + RotatedAxis() + sc_dotplot
 ```
 # DEGs Differential expression analysis on PC subclusters
 ```{r}
@@ -945,7 +916,7 @@ top10_UP_tumor_contra <- filter(fgseaRes_tumor_contra[0:10])
 #and dotplot
 ggplot(top10_UP_tumor_contra, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + 
               geom_point(aes(size = size)) +
-              ggtitle("GO N vs T") + sc
+              ggtitle("GO N vs T") + my_color
 
 # Identify list columns
 list_cols <- which(sapply(fgseaRes_tumor_contra, is.list))
@@ -1013,7 +984,7 @@ fgseaRes_0 <- fgseaRes_0[order(fgseaRes_0$NES, decreasing = T), ]
 top10_UP_0 <- filter(fgseaRes_0[0:10])
 #and dotplot
 ggplot(top10_UP_0, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_0_H") + sc
+              ggtitle("GO_0_H") + my_color
 
 saveRDS(fgseaRes_0, "/Users/ca0207bu/Desktop/GBM_seurat/Xie/hs_iPC_GO_DEGs.rds")
 ```
@@ -1025,7 +996,7 @@ fgseaRes_1 <- fgseaRes_1[order(fgseaRes_1$NES, decreasing = T), ]
 top10_UP_1 <- filter(fgseaRes_1[0:10])
 #and dotplot
 ggplot(top10_UP_1, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_1_H") + sc
+              ggtitle("GO_1_H") + my_color
 
 saveRDS(fgseaRes_1, "/Users/ca0207bu/Desktop/GBM_seurat/Xie/hs_nPC_GO_DEGs.rds")
 ```
@@ -1036,7 +1007,7 @@ fgseaRes_2 <- fgseaRes_2[order(fgseaRes_2$NES, decreasing = T), ]
 top10_UP_2 <- filter(fgseaRes_2[0:10])
 #and dotplot
 ggplot(top10_UP_2, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_2_H") + sc
+              ggtitle("GO_2_H") + my_color
 saveRDS(fgseaRes_2, "/Users/ca0207bu/Desktop/GBM_seurat/Xie/hs_ecmPC_GO_DEGs.rds")
 ```
 
@@ -1119,8 +1090,6 @@ write.table(enrich_go_h, "/Users/ca0207bu/Desktop/GBM_seurat/TNY_GBM/cellbender_
 selected_cells_2 <- SetIdent(selected_cells_2, value = as.character("region"))
 
 DimPlot(selected_cells_2, reduction = "umap", label = T, label.size = 4, shuffle= TRUE, seed = TRUE, pt.size = 1, repel = TRUE)
-        
-DimPlot(selected_cells_2, reduction = "umap", group.by = "region", shuffle= TRUE, seed = TRUE, pt.size = 1, repel = TRUE) )
 
 # Compute differential expression
 markers_genes_region <- FindAllMarkers(selected_cells_2, 
@@ -1150,17 +1119,6 @@ markers_genes_region %>%
 top100_region
 #write.table(top100_region, "/Users/ca0207bu/Desktop/GBM_seurat/Xie/top100_region.csv" )
 ```
-
-#Plot
-```{r}
-mypar(1, 5, mar = c(4, 6, 3, 1))
-for (i in unique(top25_region$cluster)) {
-    barplot(sort(setNames(top25_region$avg_log2FC, top25_region$gene)[top25_region$cluster == i], F),
-        horiz = T, las = 1, main = paste0(i, " vs. rest"), border = "white", yaxs = "i")
-    abline(v = c(0, 0.25), lty = c(1, 2))
-}
-```
-
 #fgsea
 ```{r}
 selected_cells_2_xie <- SetIdent(selected_cells_2, value = as.character("region"))
@@ -1179,9 +1137,6 @@ tumor_vs_normal_xie <- FindMarkers(selected_cells_2_xie,
                                     assay = "RNA")
 
 write.table(normal_vs_tumor_xie, "/Users/ca0207bu/Desktop/GBM_seurat/TNY_GBM/June_analysis/normal_vs_tumor_xie.csv" )
-write.table(tumor_vs_normal_xie, "/Users/ca0207bu/Desktop/GBM_seurat/Xie/tumor_vs_normal_xie_20241202.csv" )
-write.table(normal_vs_tumor_negative_xie, "/Users/ca0207bu/Desktop/GBM_seurat/TNY_GBM/June_analysis/normal_vs_tumor_negative_xie.csv" )
-write.table(tumor_vs_normal_negative_xie, "/Users/ca0207bu/Desktop/GBM_seurat/TNY_GBM/June_analysis/tumor_vs_normal_negative_xie.csv" )
 
 # Create gene rank
 gene_rank_T <- setNames(tumor_vs_normal_xie$avg_log2FC, casefold(rownames(tumor_vs_normal_xie),
@@ -1194,7 +1149,7 @@ top10_UP_T <- filter(fgseaRes_T[0:10])
 #and dotplot
 ggplot(top10_UP_T, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + 
               geom_point(aes(size = size)) +
-              ggtitle("GO_BP_T_vs_N") + sc
+              ggtitle("GO_BP_T_vs_N") + my_color
 ```
 #
 #
@@ -1355,92 +1310,8 @@ saveRDS(cellchat_tumor, "/Volumes/Elements/CB/Xie/august/cellchat_tumor.rds")
 
 ```
 
-# Create a CellChat object
-```{r}
-cellchat <- createCellChat(object = seurat.int, datatype = "RNA",assay = "RNA")
-
-#save
-saveRDS(cellchat, "/Volumes/Elements/CB/Xie/august/cellchat_20241101.rds")
-```
-# 1. Load the database you need (human in this case)
-```{r}
-CellChatDB <- CellChatDB.human
-CellChatDB.use <- CellChatDB
-dplyr::glimpse(CellChatDB$interaction)
-```
-#CELLCHAT part 1
-```{r}
-#using a subset of CellChatDB for cellcell communication analysis
-CellChatDB.use <- subsetDB(CellChatDB.human)
-
-# 2. Add the used database in the object
-cellchat@DB <- CellChatDB.use
-
-# 3. Subset the expression data to use less RAM
-# This step is necessary even if using the whole database
-cellchat <- subsetData(cellchat)
-```
-#CELLCHAT part 2
-```{r}
-#pre-process the expression data
-cellchat <- identifyOverExpressedGenes(cellchat)
-cellchat <- identifyOverExpressedInteractions(cellchat)
-
-#optional: project gene expression data onto protein protein interaction (PPI)
-cellchat <- projectData(cellchat, PPI.human)
-
-#FROM HERE
-#4. Compute the communication probability and infer cellular communication network
-#cellchat <- computeCommunProb(cellchat) #use this if you didnt run the projection
-cellchat <- computeCommunProb(cellchat, raw.use = FALSE) #if projected data, run it with the projected data
-
-# 5. Filter out the cell-cell communication if there are only few number of cells in certain cell groups
-cellchat <- filterCommunication(cellchat, min.cells = 10)
-
-# 6. Infer the cell-cell communication at a signaling pathway level
-cellchat <- computeCommunProbPathway(cellchat)
-
-# 7. Calculate the aggregated cell-cell communication network
-cellchat <- aggregateNet(cellchat)
-cellchat@net$count
-cellchat@net$weight
-
-#SAVE
-saveRDS(cellchat, "/Volumes/Elements/CB/Xie/august/cellchat_20241101.rds")
-```
-
-
-
-#Identify and visualize outgoing communication pattern of secreting cells 
-```{r}
-#selectK(cellchat, pattern = "outgoing")
-#nPatterns = 2
-#dev.off()
-#cellchat <- identifyCommunicationPatterns(cellchat, pattern = "outgoing",
-                                          k = nPatterns, width = 5, height = 9)
-#dev.off()
-#selectK(cellchat, pattern = "incoming")
-#nPatterns = 2
-#dev.off()
-#cellchat <- identifyCommunicationPatterns(cellchat, pattern = "incoming",
-                                          k = nPatterns, width = 5, height = 9)
-```
-
-#barplots relative abundance
-```{r}
-table <- table(selected_cells_2@meta.data$region, selected_cells_2@active.ident)
-barplot(table,horiz = TRUE, col= c("coral1", "#7AC5CD", "magenta"))
-
-#ALTERNATIVE WAY WITH GGPLOT2. this goes to 100
-table <- as.data.frame(table)
-table %>% 
-  group_by(Var1, Var2)%>%
-  ggplot() + geom_col(aes(x = Freq, y = Var2, fill = Var1), position = "fill")
-table
-
-```
 #CELLCHAT graphs
-###Graph 0: miscellaneous from previous code
+###Graph 0: miscellaneous
 ```{r}
 # 8. Visualize the aggregated cell-cell communication network
 groupSize <- as.numeric(table(cellchat@idents))

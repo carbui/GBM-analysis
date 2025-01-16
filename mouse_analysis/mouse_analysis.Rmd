@@ -34,11 +34,11 @@ library(DoubletFinder)
 #palettes
 sc_dotplot <- scale_colour_continuous(type = "viridis", limits = c(-2,4))
 myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral"))) 
-sc <- scale_colour_gradientn(colours = myPalette(100)) 
+my_color <- scale_colour_gradientn(colours = myPalette(100)) 
 ```
 
 #Load data and pre-process
-##Load data from Cellbender files
+##Load data from files after running Cellbender remotely at UPPMAX
 ```{r}
 # Define the directory containing the h5 files
 directory_path <- "/Users/ca0207bu/Desktop/GBM_seurat/TNY_GBM/cellbender_june/files/"
@@ -124,10 +124,8 @@ seurat_names <- c("seurat_1B", "seurat_1C",
                   "seurat_3B", "seurat_3C", "seurat_3T")
 # Add mitochondrial percentage and apply pre-filtering
 seurat_list <- lapply(seurat_list, function(seurat_obj) {
-  
   # Calculate mitochondrial percentage
   seurat_obj$mito_percent <- PercentageFeatureSet(seurat_obj, pattern = "^mt-")
-  
   # Apply pre-filtering step
   subset(seurat_obj, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
 })
@@ -136,94 +134,26 @@ seurat_list <- lapply(seurat_list, function(seurat_obj) {
 
 ##Seurat standard workflow to prepare for Doublet Finder
 ```{r}
-seurat_1B <- seurat_1B %>% 
-  NormalizeData(object = seurat_1B) %>% 
-  FindVariableFeatures(object = seurat_1B) %>% 
-  ScaleData(object = seurat_1B) %>% 
-  RunPCA(object = seurat_1B) %>% 
-  FindNeighbors(object = seurat_1B, dims = 1:20) %>% 
-  FindClusters(object = seurat_1B) %>% 
-  RunUMAP(object = seurat_1B, dims = 1:20)
-DimPlot(seurat_1B, reduction = 'umap', label = TRUE)
 
-seurat_1C <- seurat_1C %>% 
-  NormalizeData(object = seurat_1C) %>% 
-  FindVariableFeatures(object = seurat_1C) %>% 
-  ScaleData(object = seurat_1C) %>% 
-  RunPCA(object = seurat_1C) %>% 
-  FindNeighbors(object = seurat_1C, dims = 1:20) %>% 
-  FindClusters(object = seurat_1C) %>% 
-  RunUMAP(object = seurat_1C, dims = 1:20)
-DimPlot(seurat_1C, reduction = 'umap', label = TRUE)
+# Loop through each Seurat object
+for (name in seurat_names) {
+  # Get the Seurat object by name
+  seurat_obj <- get(name)
+  
+  # Apply the sequence of operations
+  seurat_obj <- JoinLayers(seurat_obj)
+  seurat_obj <- NormalizeData(object = seurat_obj)
+  seurat_obj <- FindVariableFeatures(object = seurat_obj)
+  seurat_obj <- ScaleData(object = seurat_obj)
+  seurat_obj <- RunPCA(object = seurat_obj)
+  seurat_obj <- FindNeighbors(object = seurat_obj, dims = 1:20)
+  seurat_obj <- FindClusters(object = seurat_obj)
+  seurat_obj <- RunUMAP(object = seurat_obj, dims = 1:20)
+  # Assign the processed Seurat object back to its original name
+  assign(name, seurat_obj)
+}
 
-seurat_1T <- seurat_1T %>% 
-  NormalizeData(object = seurat_1T) %>% 
-  FindVariableFeatures(object = seurat_1T) %>% 
-  ScaleData(object = seurat_1T) %>% 
-  RunPCA(object = seurat_1T) %>% 
-  FindNeighbors(object = seurat_1T, dims = 1:20) %>% 
-  FindClusters(object = seurat_1T) %>% 
-  RunUMAP(object = seurat_1T, dims = 1:20)
-DimPlot(seurat_1T, reduction = 'umap', label = TRUE)
-
-seurat_2B <- seurat_2B %>% 
-  NormalizeData(object = seurat_2B) %>% 
-  FindVariableFeatures(object = seurat_2B) %>% 
-  ScaleData(object = seurat_2B) %>% 
-  RunPCA(object = seurat_2B) %>% 
-  FindNeighbors(object = seurat_2B, dims = 1:20) %>% 
-  FindClusters(object = seurat_2B) %>% 
-  RunUMAP(object = seurat_2B, dims = 1:20)
-DimPlot(seurat_2B, reduction = 'umap', label = TRUE)
-
-seurat_2C <- seurat_2C %>% 
-  NormalizeData(object = seurat_2C) %>% 
-  FindVariableFeatures(object = seurat_2C) %>% 
-  ScaleData(object = seurat_2C) %>% 
-  RunPCA(object = seurat_2C) %>% 
-  FindNeighbors(object = seurat_2C, dims = 1:20) %>% 
-  FindClusters(object = seurat_2C) %>% 
-  RunUMAP(object = seurat_2C, dims = 1:20)
-DimPlot(seurat_2C, reduction = 'umap', label = TRUE)
-
-seurat_2T <- seurat_2T %>% 
-  NormalizeData(object = seurat_2T) %>% 
-  FindVariableFeatures(object = seurat_2T) %>% 
-  ScaleData(object = seurat_2T) %>% 
-  RunPCA(object = seurat_2T) %>% 
-  FindNeighbors(object = seurat_2T, dims = 1:20) %>% 
-  FindClusters(object = seurat_2T) %>% 
-  RunUMAP(object = seurat_2T, dims = 1:20)
-DimPlot(seurat_2T, reduction = 'umap', label = TRUE)
-
-seurat_3B <- seurat_3B %>% 
-  NormalizeData(object = seurat_3B) %>% 
-  FindVariableFeatures(object = seurat_3B) %>% 
-  ScaleData(object = seurat_3B) %>% 
-  RunPCA(object = seurat_3B) %>% 
-  FindNeighbors(object = seurat_3B, dims = 1:20) %>% 
-  FindClusters(object = seurat_3B) %>% 
-  RunUMAP(object = seurat_3B, dims = 1:20)
-DimPlot(seurat_3B, reduction = 'umap', label = TRUE)
-
-seurat_3C <- seurat_3C %>% 
-  NormalizeData(object = seurat_3C) %>% 
-  FindVariableFeatures(object = seurat_3C) %>% 
-  ScaleData(object = seurat_3C) %>% 
-  RunPCA(object = seurat_3C) %>% 
-  FindNeighbors(object = seurat_3C, dims = 1:20) %>% 
-  FindClusters(object = seurat_3C) %>% 
-  RunUMAP(object = seurat_3C, dims = 1:20)
-DimPlot(seurat_3C, reduction = 'umap', label = TRUE)
-
-seurat_3T <- seurat_3T %>% 
-  NormalizeData(object = seurat_3T) %>% 
-  FindVariableFeatures(object = seurat_3T) %>% 
-  ScaleData(object = seurat_3T) %>% 
-  RunPCA(object = seurat_3T) %>% 
-  FindNeighbors(object = seurat_3T, dims = 1:20) %>% 
-  FindClusters(object = seurat_3T) %>% 
-  RunUMAP(object = seurat_3T, dims = 1:20)
+#Plot if you wanna check
 DimPlot(seurat_3T, reduction = 'umap', label = TRUE)
 ```
 
@@ -256,58 +186,27 @@ seurat_3C$scDblFinder.class <- sce_3C$scDblFinder.class
 seurat_3T$scDblFinder.class <- sce_3T$scDblFinder.class
 ```
 
-##Visualize the doublets
+##Visualize the doublets, subset to obtain only singlets, save
 ```{r}
-DimPlot(seurat_1B, reduction = 'umap', group.by = "scDblFinder.class")
 
-DimPlot(seurat_1B, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_1C, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_1T, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_2B, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_2C, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_2T, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_3B, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_3C, reduction = 'umap', split.by = "scDblFinder.class")
-DimPlot(seurat_3T, reduction = 'umap', split.by = "scDblFinder.class")
-```
+# Path to save the processed objects
+output_dir <- "~/Desktop/GBM_seurat/scDoubletFinder/"
 
-##Subset the Seurat object to include only the singlets
-```{r}
-#Set the identity as "doublet" or "sinlget"
-Idents(seurat_1B) <- seurat_1B@meta.data$scDblFinder.class
-Idents(seurat_1C) <- seurat_1C@meta.data$scDblFinder.class
-Idents(seurat_1T) <- seurat_1T@meta.data$scDblFinder.class
-Idents(seurat_2B) <- seurat_2B@meta.data$scDblFinder.class
-Idents(seurat_2C) <- seurat_2C@meta.data$scDblFinder.class
-Idents(seurat_2T) <- seurat_2T@meta.data$scDblFinder.class
-Idents(seurat_3B) <- seurat_3B@meta.data$scDblFinder.class
-Idents(seurat_3C) <- seurat_3C@meta.data$scDblFinder.class
-Idents(seurat_3T) <- seurat_3T@meta.data$scDblFinder.class
-
-#Subset the data to keep only the singlets
-seurat_1B <- subset(seurat_1B, idents = "singlet")
-seurat_1C <- subset(seurat_1C, idents = "singlet")
-seurat_1T <- subset(seurat_1T, idents = "singlet")
-seurat_2B <- subset(seurat_2B, idents = "singlet")
-seurat_2C <- subset(seurat_2C, idents = "singlet")
-seurat_2T <- subset(seurat_2T, idents = "singlet")
-seurat_3B <- subset(seurat_3B, idents = "singlet")
-seurat_3C <- subset(seurat_3C, idents = "singlet")
-seurat_3T <- subset(seurat_3T, idents = "singlet")
-
-#plot
-DimPlot(seurat_3C, reduction = 'umap', label = TRUE)
-
-#Save Seurat objects containing only the singlets
-saveRDS(seurat_1B,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_1B_singlets.rds")
-saveRDS(seurat_1C,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_1C_singlets.rds")
-saveRDS(seurat_1T,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_1T_singlets.rds")
-saveRDS(seurat_2B,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_2B_singlets.rds")
-saveRDS(seurat_2C,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_2C_singlets.rds")
-saveRDS(seurat_2T,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_2T_singlets.rds")
-saveRDS(seurat_3B,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_3B_singlets.rds")
-saveRDS(seurat_3C,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_3C_singlets.rds")
-saveRDS(seurat_3T,"~/Desktop/GBM_seurat/TNY_GBM/seurat_objects/seurat_3T_singlets.rds")
+# Loop through each Seurat object
+for (name in seurat_names) {
+  # Get the Seurat object
+  seurat_obj <- get(name)
+  # Visualize the doublets
+  DimPlot(seurat_obj, reduction = "umap", split.by = "scDblFinder.class")
+  # Set the identity class as "doublet" or "singlet"
+  Idents(seurat_obj) <- seurat_obj@meta.data$scDblFinder.class
+  # Subset to include only singlets
+  seurat_obj <- subset(seurat_obj, idents = "singlet")
+  # Save the processed Seurat object
+  saveRDS(seurat_obj, file = file.path(output_dir, paste0(name, "_singlets.rds")))
+  # Assign back to the global environment if needed
+  assign(name, seurat_obj)
+}
 
 #Clean memory
 rm(sce_1B, sce_1C, sce_1T, sce_2B, sce_2C, sce_2T, sce_3B, sce_3C, sce_3T)
@@ -339,7 +238,7 @@ feats <- c("nCount_RNA", "nFeature_RNA", "mito_percent", "Mcherry")
 VlnPlot(merged_seurat, features = feats, raster = FALSE)
 ```
 
-##Filter with more strict parameters
+##Filter with stricter parameters
 ```{r}
 merged_seurat_filtered <- subset(merged_seurat, 
                                  subset = nCount_RNA > 300 
@@ -388,7 +287,6 @@ table %>%
   group_by(Var1, Var2)%>%
   ggplot() + geom_col(aes(x = Freq, y = Var2, fill = Var1), position = "fill")
 table
-
 ```
 #Differential gene expression (DEGs) analysis
 ```{r}
@@ -409,7 +307,6 @@ merged_seurat_filtered_all_markers <- FindAllMarkers(merged_seurat_filtered,
 
 #save table of the genes
 write.table(merged_seurat_filtered_all_markers, "/Users/ca0207bu/Desktop/GBM_seurat/TNY_GBM/cellbender_june/DEGs_clusters_20240614.txt")
-
 ```
 ##Dotplot marker genes
 ```{r}
@@ -423,12 +320,12 @@ markers_caro<- str_to_title(markers_caro, locale = "en")
 #Dotplot marker genes
 DotPlot(merged_seurat_filtered, features = markers_caro, assay= "RNA", cluster.idents = T, scale = T)+ 
   scale_size_continuous(labels = function(x) str_wrap(x, width = 1)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) + sc #palette
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) + my_color #palette
 ```
 #Rename identities of the clusters
 ```{r}
-#Also remember to rename the identity "0" to something else cause later on, Cellchat wont work with a cluster called "0".
 #Set correct identity and Join Layers if needed
+
 #sel.clust = "RNA_snn_res.1"
 #merged_seurat_filtered <- SetIdent(merged_seurat_filtered, value = sel.clust)
 #merged_seurat_filtered <- JoinLayers(merged_seurat_filtered)
@@ -476,7 +373,7 @@ merged_seurat_filtered <- RenameIdents(merged_seurat_filtered,
 ```{r}
 merged_seurat_filtered <- SetIdent(merged_seurat_filtered_3, value="RNA_snn_res.1")
 selected_cells <- subset(merged_seurat_filtered, subset=RNA_snn_res.1%in% c(12,15)) #clusters of pericytes
-DietSeurat(selected_cells) #clean the new object from the processing done so far; then process it new
+DietSeurat(selected_cells) #clean the new object from the processing done so far; then process it from the beginning
 selected_cells <- NormalizeData(selected_cells)
 selected_cells <- ScaleData(selected_cells)
 selected_cells <- FindVariableFeatures(selected_cells)
@@ -718,11 +615,8 @@ gene_rank_degs_tumor_vs_border <- sort(gene_rank_degs_tumor_vs_border, decreasin
 gene_rank_degs_tumor_vs_contra <- setNames(degs_tumor_vs_contra$avg_log2FC, rownames(degs_tumor_vs_contra))
 gene_rank_degs_tumor_vs_contra <- sort(gene_rank_degs_tumor_vs_contra, decreasing = TRUE)
 
-
 gene_rank_degs_border_vs_contra <- setNames(degs_border_vs_contra$avg_log2FC, rownames(degs_border_vs_contra))
 gene_rank_degs_border_vs_contra <- sort(gene_rank_degs_border_vs_contra, decreasing = TRUE)
-
-
 ```
 
 ## Select top25 genes and filter 
@@ -770,24 +664,8 @@ plot_degs_tumor_vs_border <- genes_degs_tumor_vs_border_filtered %>%
   coord_flip() +
   theme_classic()
 plot_degs_tumor_vs_border
-
-plot_degs_tumor_vs_contra <- genes_degs_tumor_vs_contra_filtered %>% 
-  ggplot(aes(x=gene, y = avg_log2FC)) +
-  geom_col(aes(x = fct_reorder(gene, avg_log2FC), y = avg_log2FC), fill="#f68060", alpha=.6, width=.4) +
-  labs(title = "Top DEGs Tumor vs Contra")+
-  coord_flip() +
-  theme_classic()
-plot_degs_tumor_vs_contra
-
-plot_degs_border_vs_contra <- genes_degs_border_vs_contra_filtered %>% 
-  ggplot(aes(x=gene, y = avg_log2FC)) +
-  geom_col(aes(x = fct_reorder(gene, avg_log2FC), y = avg_log2FC), fill="#f68060", alpha=.6, width=.4) +
-  labs(title = "Top DEGs Border vs Contra")+
-  coord_flip() +
-  theme_classic()
-plot_degs_border_vs_contra
 ```
-## Select gene sets
+## Select gene sets and organism for Fgsea analysis
 ```{r}
 library(msigdbr)
 
@@ -815,7 +693,7 @@ fgseaRes_tumor_border <- fgseaRes_tumor_border[order(fgseaRes_tumor_border$NES, 
 top10_UP_tumor_border <- filter(fgseaRes_tumor_border[0:20]) #top 20 enriched pathways
 
 #and dotplot
-ggplot(top10_UP_tumor_border, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) + ggtitle("GO Tumor vs Border") + sc
+ggplot(top10_UP_tumor_border, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) + ggtitle("GO Tumor vs Border") + my_color
 ```
 ### tumor vs contra
 ```{r}
@@ -827,7 +705,7 @@ top10_UP_tumor_contra <- filter(fgseaRes_tumor_contra[0:20])
 #and dotplot
 ggplot(top10_UP_tumor_contra, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + 
               geom_point(aes(size = size)) +
-              ggtitle("GO Tumor vs Contra") + sc
+              ggtitle("GO Tumor vs Contra") + my_color
 ```
 
 ### border vs contra
@@ -840,7 +718,7 @@ top10_UP_border_contra <- filter(fgseaRes_border_contra[0:20])
 #and dotplot
 ggplot(top10_UP_border_contra, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + 
               geom_point(aes(size = size)) +
-              ggtitle("GO Border vs Contra") + sc
+              ggtitle("GO Border vs Contra") + my_color
 ```
 
 
@@ -852,87 +730,51 @@ ggplot(top10_UP_border_contra, aes(x = NES, y = fct_reorder(pathway, NES), colou
 cluster_ids = selected_cells@meta.data$RNA_snn_res.1
 sub_data = SetIdent(selected_cells, value = "RNA_snn_res.1")
 
-# Find the DEGs of the selected subcluster compared to all the other subclusters 
-DGE_cell_selection_0 <- FindMarkers(sub_data, ident.1 = "0",
-                                    min.cells.feature = 3, 
-                                    max.cells.per.ident = 80,
-                                        random.seed = 3,
-                                        log2FC.threshold = 0.15, 
-                                        test.use = "wilcox", 
-                                        min.pct = 0.1, 
-                                        min.diff.pct = 0.1, 
-                                        only.pos = FALSE, 
-                                        assay = "RNA")
-DGE_cell_selection_1 <- FindMarkers(sub_data, ident.1 = "1", 
-                                    min.cells.feature = 3, 
-                                    max.cells.per.ident = 80,
-                                        random.seed = 3,
-                                        log2FC.threshold = 0.15, 
-                                        test.use = "wilcox", 
-                                        min.pct = 0.1, 
-                                        min.diff.pct = 0.1, 
-                                        only.pos = FALSE, 
-                                        assay = "RNA")
-DGE_cell_selection_2 <- FindMarkers(sub_data, ident.1 = "2",
-                                    min.cells.feature = 3, 
-                                    max.cells.per.ident = 80,
-                                        random.seed = 3,
-                                        log2FC.threshold = 0.15, 
-                                        test.use = "wilcox", 
-                                        min.pct = 0.1, 
-                                        min.diff.pct = 0.1, 
-                                        only.pos = FALSE, 
-                                        assay = "RNA")
-DGE_cell_selection_3 <- FindMarkers(sub_data, ident.1 = "3",
-                                    min.cells.feature = 3, 
-                                    max.cells.per.ident = 80,
-                                        random.seed = 3,
-                                        log2FC.threshold = 0.15, 
-                                        test.use = "wilcox", 
-                                        min.pct = 0.1, 
-                                        min.diff.pct = 0.1, 
-                                        only.pos = FALSE, 
-                                        assay = "RNA")
-DGE_cell_selection_4 <- FindMarkers(sub_data, ident.1 = "4",
-                                    min.cells.feature = 3, 
-                                    max.cells.per.ident = 80,
-                                        random.seed = 3,
-                                        log2FC.threshold = 0.15, 
-                                        test.use = "wilcox", 
-                                        min.pct = 0.1, 
-                                        min.diff.pct = 0.1, 
-                                        only.pos = FALSE, 
-                                        assay = "RNA")
-DGE_cell_selection_5 <- FindMarkers(sub_data, ident.1 = "5",
-                                    min.cells.feature = 3, 
-                                    max.cells.per.ident = 80,
-                                        random.seed = 3,
-                                        log2FC.threshold = 0.15, 
-                                        test.use = "wilcox", 
-                                        min.pct = 0.1, 
-                                        min.diff.pct = 0.1, 
-                                        only.pos = FALSE, 
-                                        assay = "RNA")
+# Define the range of cluster IDs
+cluster_ids <- 0:5 # Replace 0:5 with the actual range of cluster IDs if changed
+
+# Parameters for FindMarkers
+params <- list(
+  min.cells.feature = 3,
+  max.cells.per.ident = 80,
+  random.seed = 3,
+  log2FC.threshold = 0.15,
+  test.use = "wilcox",
+  min.pct = 0.1,
+  min.diff.pct = 0.1,
+  only.pos = FALSE, # depending if you only want upregulated or also downregulated genes
+  assay = "RNA"
+)
+
+# Initialize a list to store results
+DGE_results <- list()
+
+# Loop through each cluster ID
+for (id in cluster_ids) {
+  DGE_results[[paste0("DGE_cell_selection_", id)]] <- FindMarkers(
+    sub_data,
+    ident.1 = as.character(id),
+    !!!params
+  )
+}
+
+# save results
+for (name in names(DGE_results)) {
+write.csv(DGE_results[[name]], file = paste0(name, ".csv"), row.names = TRUE)
+}
 ```
 ## Create a gene rank based on the gene expression fold change (SUBCLUSTERS)
 ```{r}
-gene_rank_0 <- setNames(DGE_cell_selection_0$avg_log2FC, rownames(DGE_cell_selection_0))
-gene_rank_0 <- sort(gene_rank_0, decreasing = TRUE)
+# Initialize a list to store gene ranks
+gene_ranks <- list()
 
-gene_rank_1 <- setNames(DGE_cell_selection_1$avg_log2FC, rownames(DGE_cell_selection_1))
-gene_rank_1 <- sort(gene_rank_1, decreasing = TRUE)
+# Loop through each cluster ID
+for (id in 0:5) {
+  # Dynamically access DGE results and calculate gene ranks
+  DGE_result <- DGE_results[[paste0("DGE_cell_selection_", id)]]
+  gene_ranks[[paste0("gene_rank_", id)]] <- sort(setNames(DGE_result$avg_log2FC, rownames(DGE_result)), decreasing = TRUE)
+}
 
-gene_rank_2 <- setNames(DGE_cell_selection_2$avg_log2FC, rownames(DGE_cell_selection_2))
-gene_rank_2 <- sort(gene_rank_2, decreasing = TRUE)
-
-gene_rank_3 <- setNames(DGE_cell_selection_3$avg_log2FC, rownames(DGE_cell_selection_3))
-gene_rank_3 <- sort(gene_rank_3, decreasing = TRUE)
-
-gene_rank_4 <- setNames(DGE_cell_selection_4$avg_log2FC, rownames(DGE_cell_selection_4))
-gene_rank_4 <- sort(gene_rank_4, decreasing = TRUE)
-
-gene_rank_5 <- setNames(DGE_cell_selection_5$avg_log2FC, rownames(DGE_cell_selection_5))
-gene_rank_5 <- sort(gene_rank_5, decreasing = TRUE)
 ```
 ##Fgsea (SUBCLUSTERS)
 ### Perform enrichment analysis CLUSTER 0 
@@ -942,7 +784,7 @@ fgseaRes_0 <- fgseaRes_0[order(fgseaRes_0$NES, decreasing = T), ]
 top10_UP_0 <- filter(fgseaRes_0[0:20])
 #and dotplot
 ggplot(top10_UP_0, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_0") + sc
+              ggtitle("GO_0") + my_color
 ```
 
 ### Perform enrichment analysis CLUSTER 1 
@@ -952,7 +794,7 @@ fgseaRes_1 <- fgseaRes_1[order(fgseaRes_1$NES, decreasing = T), ]
 top10_UP_1 <- filter(fgseaRes_1[0:10])
 #and dotplot
 ggplot(top10_UP_1, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_1") + sc
+              ggtitle("GO_1") + my_color
 ```
 ### Perform enrichment analysis CLUSTER 2 
 ```{r}
@@ -961,7 +803,7 @@ fgseaRes_2 <- fgseaRes_2[order(fgseaRes_2$NES, decreasing = T), ]
 top10_UP_2 <- filter(fgseaRes_2[0:20])
 #and dotplot
 ggplot(top10_UP_2, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_2") + sc
+              ggtitle("GO_2") + my_color
 ```
 ### Perform enrichment analysis CLUSTER 3 
 ```{r}
@@ -970,7 +812,7 @@ fgseaRes_3 <- fgseaRes_3[order(fgseaRes_3$NES, decreasing = T), ]
 top10_UP_3 <- filter(fgseaRes_3[0:10])
 #and dotplot
 ggplot(top10_UP_3, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_3") + sc
+              ggtitle("GO_3") + my_color
 ```
 ### Perform enrichment analysis CLUSTER 4 
 ```{r}
@@ -979,7 +821,7 @@ fgseaRes_4 <- fgseaRes_4[order(fgseaRes_4$NES, decreasing = T), ]
 top10_UP_4 <- filter(fgseaRes_4[0:10])
 #and dotplot
 ggplot(top10_UP_4, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_4") + sc
+              ggtitle("GO_4") + my_color
 ```
 ### Perform enrichment analysis CLUSTER 5 
 ```{r}
@@ -988,7 +830,7 @@ fgseaRes_5 <- fgseaRes_5[order(fgseaRes_5$NES, decreasing = T), ]
 top10_UP_5 <- filter(fgseaRes_5[0:20])
 #and dotplot
 ggplot(top10_UP_5, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_5") + sc
+              ggtitle("GO_5") + my_color
 ```
 
 
@@ -1055,7 +897,7 @@ fgseaRes_0 <- fgseaRes_0[order(fgseaRes_0$NES, decreasing = T), ]
 top10_UP_0 <- filter(fgseaRes_0[0:20])
 #and dotplot
 ggplot(top10_UP_0, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_Border") + sc
+              ggtitle("GO_Border") + my_color
 ```
 ### Perform enrichment analysis CONTRA
 ```{r}
@@ -1064,7 +906,7 @@ fgseaRes_1 <- fgseaRes_1[order(fgseaRes_1$NES, decreasing = T), ]
 top10_UP_1 <- filter(fgseaRes_1[0:20])
 #and dotplot
 ggplot(top10_UP_1, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_Contra") + sc
+              ggtitle("GO_Contra") + my_color
 ```
 ### Perform enrichment analysis TUMOR 
 ```{r}
@@ -1073,7 +915,7 @@ fgseaRes_2 <- fgseaRes_2[order(fgseaRes_2$NES, decreasing = T), ]
 top10_UP_2 <- filter(fgseaRes_2[0:20])
 #and dotplot
 ggplot(top10_UP_2, aes(x = NES, y = fct_reorder(pathway, NES), colour = pval)) + geom_point(aes(size = size)) +
-              ggtitle("GO_Tumor") + sc
+              ggtitle("GO_Tumor") + my_color
 ```
 
 
