@@ -117,28 +117,22 @@ seurat_3T$region <- "tumor"
 Before using the scDblFinder package I found it useful to apply a pre-filtering step, so that the memory and time needed are reasonable. Perform the calculations and filtering separately since you need to run DF on separated files.
 ##Calculate mitocondrial genes and initial filtering step
 ```{r}
-#Calculate mitocondrial genes
-seurat_1B$mito_percent <- PercentageFeatureSet(seurat_1B, pattern = "^mt-")
-seurat_1C$mito_percent <- PercentageFeatureSet(seurat_1C, pattern = "^mt-")
-seurat_1T$mito_percent <- PercentageFeatureSet(seurat_1T, pattern = "^mt-")
-seurat_2B$mito_percent <- PercentageFeatureSet(seurat_2B, pattern = "^mt-")
-seurat_2C$mito_percent <- PercentageFeatureSet(seurat_2C, pattern = "^mt-")
-seurat_2T$mito_percent <- PercentageFeatureSet(seurat_2T, pattern = "^mt-")
-seurat_3B$mito_percent <- PercentageFeatureSet(seurat_3B, pattern = "^mt-")
-seurat_3C$mito_percent <- PercentageFeatureSet(seurat_3C, pattern = "^mt-")
-seurat_3T$mito_percent <- PercentageFeatureSet(seurat_3T, pattern = "^mt-")
-
-#Pre-filtering step
-seurat_1B <- subset(seurat_1B, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_1C <- subset(seurat_1C, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_1T <- subset(seurat_1T, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_2B <- subset(seurat_2B, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_2C <- subset(seurat_2C, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_2T <- subset(seurat_2T, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_3B <- subset(seurat_3B, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_3C <- subset(seurat_3C, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
-seurat_3T <- subset(seurat_3T, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
+# List of Seurat object names
+seurat_names <- c("seurat_1B", "seurat_1C", 
+                  "seurat_1T", "seurat_2B", 
+                  "seurat_2C", "seurat_2T", 
+                  "seurat_3B", "seurat_3C", "seurat_3T")
+# Add mitochondrial percentage and apply pre-filtering
+seurat_list <- lapply(seurat_list, function(seurat_obj) {
+  
+  # Calculate mitochondrial percentage
+  seurat_obj$mito_percent <- PercentageFeatureSet(seurat_obj, pattern = "^mt-")
+  
+  # Apply pre-filtering step
+  subset(seurat_obj, subset = nFeature_RNA > 50 & nCount_RNA > 100 & mito_percent < 25)
+})
 ```
+
 
 ##Seurat standard workflow to prepare for Doublet Finder
 ```{r}
